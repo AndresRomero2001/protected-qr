@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenido Protegido</title>
+<style>
+:root {
+  --bg1: #0f0c29; --bg2: #302b63; --bg3: #24243e;
+  --card: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.12);
+  --accent: #8b5cf6; --accent-d: #6d28d9;
+  --text: #fff; --muted: rgba(255,255,255,0.55);
+  --err: #f87171; --ok: #34d399;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3));
+  color:var(--text);padding:16px;
+}
+.screen{width:100%;display:flex;align-items:center;justify-content:center}
+.card{
+  background:var(--card);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:24px;
+  padding:40px 32px;max-width:420px;width:100%;text-align:center;
+  box-shadow:0 8px 32px rgba(0,0,0,.3);
+}
+.card.wide{max-width:640px;text-align:left;padding:28px 28px 20px}
+.lock{font-size:48px;margin-bottom:12px}
+h1{font-size:1.4rem;font-weight:600;margin-bottom:6px}
+.sub{color:var(--muted);font-size:.88rem;margin-bottom:28px}
+input[type=password],input[type=text]{
+  width:100%;padding:14px 18px;border:2px solid rgba(255,255,255,.15);
+  border-radius:14px;background:rgba(255,255,255,.06);color:#fff;
+  font-size:1.05rem;letter-spacing:2px;text-align:center;outline:none;
+  transition:border .3s,box-shadow .3s;margin-bottom:16px;
+}
+input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,246,.15)}
+.btn{
+  width:100%;padding:14px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-d));
+  color:#fff;font-size:1rem;font-weight:600;cursor:pointer;
+  transition:transform .15s,box-shadow .3s;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(139,92,246,.4)}
+.btn:active{transform:translateY(0)}
+.btn-sm{width:auto;padding:10px 20px;font-size:.9rem;border-radius:10px}
+.error{color:var(--err);font-size:.85rem;margin-top:8px;min-height:20px}
+.shake{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.fade-in{animation:fadeIn .5s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.hidden{display:none!important}
+
+.admin-badge{
+  display:inline-block;background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);
+  border-radius:8px;padding:4px 12px;font-size:.8rem;font-weight:600;
+  color:var(--accent);margin-bottom:16px;
+}
+.tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.tab{
+  padding:8px 16px;border-radius:10px;border:none;background:rgba(255,255,255,.06);
+  color:var(--muted);cursor:pointer;font-size:.85rem;font-weight:500;transition:.2s;
+}
+.tab:hover{background:rgba(255,255,255,.1);color:#fff}
+.tab.active{background:rgba(139,92,246,.25);color:var(--accent)}
+
+#content-display{line-height:1.7}
+#content-display h2{margin-bottom:10px;font-size:1.3rem}
+#content-display p{margin-bottom:10px;color:rgba(255,255,255,.85)}
+#content-display a{color:#a78bfa}
+#content-display img{max-width:100%;border-radius:12px;margin:8px 0}
+
+.toolbar{
+  display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;
+  padding:6px;background:rgba(255,255,255,.05);border-radius:10px;
+}
+.toolbar button{
+  width:36px;height:36px;border:none;border-radius:8px;
+  background:rgba(255,255,255,.08);color:#fff;cursor:pointer;
+  font-size:.9rem;display:flex;align-items:center;justify-content:center;
+  transition:.15s;
+}
+.toolbar button:hover{background:rgba(139,92,246,.3)}
+
+#editor{
+  min-height:180px;max-height:400px;overflow-y:auto;
+  padding:16px;border:2px solid rgba(255,255,255,.1);border-radius:12px;
+  background:rgba(255,255,255,.04);outline:none;line-height:1.6;
+  font-size:.95rem;color:#fff;
+}
+#editor:focus{border-color:rgba(139,92,246,.5)}
+#editor h2{font-size:1.2rem;margin-bottom:8px}
+#editor p{margin-bottom:8px}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.field input{text-align:left;letter-spacing:1px;font-size:.95rem}
+
+.status{font-size:.85rem;margin-top:10px;min-height:20px}
+.status.ok{color:var(--ok)}
+.status.err{color:var(--err)}
+
+.footer{margin-top:20px;text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)}
+.link-btn{
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.85rem;text-decoration:underline;
+}
+.link-btn:hover{color:#fff}
+
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:480px){
+  .card{padding:28px 20px}
+  .card.wide{padding:20px 16px}
+  h1{font-size:1.2rem}
+}
+</style>
+</head>
+<body>
+
+<!-- GATE -->
+<div id="gate" class="screen">
+  <div class="card">
+    <div class="lock">&#128274;</div>
+    <h1>Contenido Protegido</h1>
+    <p class="sub">Introduce el código de acceso</p>
+    <input type="password" id="code" placeholder="Código" autocomplete="off" autofocus>
+    <button class="btn" id="unlock-btn">Desbloquear</button>
+    <p class="error" id="error"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="screen hidden">
+  <div class="card wide fade-in">
+    <div id="admin-bar" class="hidden">
+      <span class="admin-badge">&#128737; Administrador</span>
+      <div class="tabs">
+        <button class="tab active" data-tab="preview">Vista previa</button>
+        <button class="tab" data-tab="edit">Editar contenido</button>
+        <button class="tab" data-tab="settings">Configuración</button>
+      </div>
+    </div>
+
+    <div id="panel-preview" class="panel">
+      <div id="content-display"></div>
+    </div>
+
+    <div id="panel-edit" class="panel hidden">
+      <div class="toolbar">
+        <button onclick="execCmd('bold')" title="Negrita"><b>B</b></button>
+        <button onclick="execCmd('italic')" title="Cursiva"><i>I</i></button>
+        <button onclick="execCmd('underline')" title="Subrayado"><u>U</u></button>
+        <button onclick="addHeading()" title="Título">H</button>
+        <button onclick="addLink()" title="Enlace">&#128279;</button>
+      </div>
+      <div id="editor" contenteditable="true"></div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="saveContent()">Guardar contenido</button>
+        <span id="save-status" class="status"></span>
+      </div>
+    </div>
+
+    <div id="panel-settings" class="panel hidden">
+      <div class="field">
+        <label>Código de acceso para usuarios</label>
+        <input type="text" id="user-code-input" placeholder="Código de usuario">
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="saveSettings()">Guardar configuración</button>
+        <span id="settings-status" class="status"></span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="link-btn" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var GITHUB_API = "https://api.github.com/repos/AndresRomero2001/protected-qr/contents/data.json";
+var ADMIN_HASH = "c6350fe9f34e025006dfb017d6d69e234d7433914d8e7110087e5c0bac4b89e5";
+var ENC_TOKEN = "819d937461b8aa55aac8e0fd0845699d:d0bf0655f946e89c98b1f094:51e2f18bfc204798d449fcf0cd3d3806:c47f010b960f12407f385a7900f9139c7ec75f5c9ae5b1086477d466cebaf28271fc06c0ad04b49c";
+
+var data = null;
+var isAdmin = false;
+var ghToken = null;
+var fileSha = null;
+
+// ── Crypto helpers ──
+function sha256(str) {
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str))
+    .then(function(buf) {
+      return Array.from(new Uint8Array(buf)).map(function(b) {
+        return b.toString(16).padStart(2, "0");
+      }).join("");
+    });
+}
+
+function hexToBytes(hex) {
+  var bytes = new Uint8Array(hex.length / 2);
+  for (var i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  }
+  return bytes;
+}
+
+function decryptToken(encStr, password) {
+  var parts = encStr.split(":");
+  var salt = hexToBytes(parts[0]);
+  var iv = hexToBytes(parts[1]);
+  var tag = hexToBytes(parts[2]);
+  var ciphertext = hexToBytes(parts[3]);
+
+  return crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]
+  ).then(function(keyMaterial) {
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false, ["decrypt"]
+    );
+  }).then(function(key) {
+    var combined = new Uint8Array(ciphertext.length + tag.length);
+    combined.set(ciphertext);
+    combined.set(tag, ciphertext.length);
+    return crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, combined);
+  }).then(function(decrypted) {
+    return new TextDecoder().decode(decrypted);
+  });
+}
+
+// ── GitHub API ──
+function fetchData() {
+  return fetch(GITHUB_API, {
+    headers: { "Accept": "application/vnd.github.v3+json" }
+  }).then(function(r) { return r.json(); })
+    .then(function(json) {
+      fileSha = json.sha;
+      var raw = atob(json.content);
+      var decoded = decodeURIComponent(escape(raw));
+      return JSON.parse(decoded);
+    });
+}
+
+function saveData(obj) {
+  var content = JSON.stringify(obj, null, 2);
+  var encoded = btoa(unescape(encodeURIComponent(content)));
+  return fetch(GITHUB_API, {
+    method: "PUT",
+    headers: {
+      "Authorization": "token " + ghToken,
+      "Accept": "application/vnd.github.v3+json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: "update content",
+      content: encoded,
+      sha: fileSha
+    })
+  }).then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.content && result.content.sha) {
+        fileSha = result.content.sha;
+      }
+      return result;
+    });
+}
+
+// ── Unlock ──
+function unlock() {
+  var code = document.getElementById("code").value;
+  if (!code) return;
+  var errEl = document.getElementById("error");
+  var btn = document.getElementById("unlock-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Verificando...';
+
+  sha256(code).then(function(hash) {
+    if (hash === ADMIN_HASH) {
+      isAdmin = true;
+      return decryptToken(ENC_TOKEN, code).then(function(token) {
+        ghToken = token;
+        return fetchData();
+      }).then(function(d) {
+        data = d;
+        showApp();
+      });
+    }
+
+    return fetchData().then(function(d) {
+      data = d;
+      if (code === data.userCode) {
+        showApp();
+      } else {
+        errEl.textContent = "Código incorrecto";
+        errEl.classList.add("shake");
+        document.getElementById("code").value = "";
+        setTimeout(function() { errEl.classList.remove("shake"); }, 500);
+        setTimeout(function() { errEl.textContent = ""; }, 2500);
+      }
+    });
+  }).catch(function(e) {
+    console.error(e);
+    errEl.textContent = "Error de conexión. Inténtalo de nuevo.";
+    setTimeout(function() { errEl.textContent = ""; }, 3000);
+  }).finally(function() {
+    btn.disabled = false;
+    btn.textContent = "Desbloquear";
+  });
+}
+
+// ── Show app ──
+function showApp() {
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("content-display").innerHTML = data.content || "";
+  if (isAdmin) {
+    document.getElementById("admin-bar").classList.remove("hidden");
+    document.getElementById("editor").innerHTML = data.content || "";
+    document.getElementById("user-code-input").value = data.userCode || "";
+  }
+}
+
+// ── Tabs ──
+document.addEventListener("click", function(e) {
+  if (!e.target.classList.contains("tab")) return;
+  var tabName = e.target.getAttribute("data-tab");
+  document.querySelectorAll(".tab").forEach(function(t) { t.classList.remove("active"); });
+  e.target.classList.add("active");
+  document.querySelectorAll(".panel").forEach(function(p) { p.classList.add("hidden"); });
+  var panel = document.getElementById("panel-" + tabName);
+  if (panel) panel.classList.remove("hidden");
+  if (tabName === "edit") document.getElementById("editor").innerHTML = data.content || "";
+  if (tabName === "preview") document.getElementById("content-display").innerHTML = data.content || "";
+});
+
+// ── Editor ──
+function execCmd(cmd) { document.execCommand(cmd, false, null); document.getElementById("editor").focus(); }
+function addHeading() { document.execCommand("formatBlock", false, "h2"); document.getElementById("editor").focus(); }
+function addLink() { var url = prompt("URL del enlace:"); if (url) document.execCommand("createLink", false, url); }
+
+// ── Save content ──
+function saveContent() {
+  var statusEl = document.getElementById("save-status");
+  statusEl.className = "status";
+  statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
+  data.content = document.getElementById("editor").innerHTML;
+  saveData(data).then(function(r) {
+    if (r.content) {
+      statusEl.className = "status ok";
+      statusEl.textContent = "Guardado correctamente";
+      document.getElementById("content-display").innerHTML = data.content;
+    } else {
+      statusEl.className = "status err";
+      statusEl.textContent = "Error: " + (r.message || "desconocido");
+    }
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  }).catch(function() {
+    statusEl.className = "status err";
+    statusEl.textContent = "Error de conexión";
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  });
+}
+
+// ── Save settings ──
+function saveSettings() {
+  var statusEl = document.getElementById("settings-status");
+  var newCode = document.getElementById("user-code-input").value.trim();
+  if (!newCode) {
+    statusEl.className = "status err";
+    statusEl.textContent = "El código no puede estar vacío";
+    setTimeout(function() { statusEl.textContent = ""; }, 2500);
+    return;
+  }
+  statusEl.className = "status";
+  statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
+  data.userCode = newCode;
+  saveData(data).then(function(r) {
+    if (r.content) {
+      statusEl.className = "status ok";
+      statusEl.textContent = "Guardado correctamente";
+    } else {
+      statusEl.className = "status err";
+      statusEl.textContent = "Error: " + (r.message || "desconocido");
+    }
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  }).catch(function() {
+    statusEl.className = "status err";
+    statusEl.textContent = "Error de conexión";
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  });
+}
+
+// ── Logout ──
+function logout() {
+  data = null; isAdmin = false; ghToken = null; fileSha = null;
+  document.getElementById("code").value = "";
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("gate").classList.remove("hidden");
+  document.getElementById("admin-bar").classList.add("hidden");
+  document.querySelectorAll(".panel").forEach(function(p, i) {
+    if (i === 0) p.classList.remove("hidden"); else p.classList.add("hidden");
+  });
+  document.querySelectorAll(".tab").forEach(function(t, i) {
+    t.classList.toggle("active", i === 0);
+  });
+}
+
+// ── Events ──
+document.getElementById("code").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") unlock();
+});
+document.getElementById("unlock-btn").addEventListener("click", unlock);
+</script>
+</body>
+</html>

@@ -1,9 +1,79 @@
-<!DOCTYPE html>
+#!/usr/bin/env node
+const crypto = require("crypto");
+const { execSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+
+// ── CONFIG ──────────────────────────────────────────────────────────
+const ADMIN_CODE = "Chitoadmin1234";
+const DEFAULT_USER_CODE = "sorpresa2024";
+const DEFAULT_CONTENT =
+  "<h2>¡Sorpresa!</h2><p>Este es el contenido protegido. Edítalo desde el panel de administración.</p>";
+const PAGE_TITLE = "Contenido Protegido";
+const GITHUB_OWNER = "AndresRomero2001";
+const GITHUB_REPO = "protected-qr";
+// ────────────────────────────────────────────────────────────────────
+
+const ADMIN_HASH = crypto.createHash("sha256").update(ADMIN_CODE).digest("hex");
+const GITHUB_API_FILE =
+  "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/contents/data.json";
+const DEPLOY_URL =
+  "https://" + GITHUB_OWNER.toLowerCase() + ".github.io/" + GITHUB_REPO + "/";
+
+// ── Get GitHub token ────────────────────────────────────────────────
+let ghToken;
+// Accept token as CLI argument, env var, or fall back to gh CLI
+if (process.argv[2]) {
+  ghToken = process.argv[2];
+  console.log("GitHub token provided via argument");
+} else if (process.env.GH_TOKEN) {
+  ghToken = process.env.GH_TOKEN;
+  console.log("GitHub token provided via GH_TOKEN env var");
+} else {
+  try {
+    ghToken = execSync("gh auth token", { encoding: "utf8" }).trim();
+    console.log("GitHub token obtained from gh CLI");
+  } catch {
+    console.error("ERROR: Provide token as argument or run 'gh auth login'.");
+    process.exit(1);
+  }
+}
+
+// ── Encrypt token with admin code (PBKDF2 + AES-256-GCM) ───────────
+function encryptToken(token, password) {
+  const salt = crypto.randomBytes(16);
+  const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  let encrypted = cipher.update(token, "utf8");
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return (
+    salt.toString("hex") + ":" +
+    iv.toString("hex") + ":" +
+    tag.toString("hex") + ":" +
+    encrypted.toString("hex")
+  );
+}
+
+const encryptedToken = encryptToken(ghToken, ADMIN_CODE);
+
+// ── Write data.json ─────────────────────────────────────────────────
+const dataJson = { userCode: DEFAULT_USER_CODE, content: DEFAULT_CONTENT, showCountdown: false, countdownDate: "", countdownText: "" };
+fs.writeFileSync(
+  path.join(__dirname, "data.json"),
+  JSON.stringify(dataJson, null, 2)
+);
+console.log("data.json created");
+
+// ── HTML template ───────────────────────────────────────────────────
+function buildHTML() {
+  return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contenido Protegido</title>
+<title>${PAGE_TITLE}</title>
 <style>
 :root {
   --bg1: #0f0c29; --bg2: #302b63; --bg3: #24243e;
@@ -188,7 +258,7 @@ input[type=datetime-local]{
 <div id="gate" class="screen">
   <div class="card">
     <div class="lock">&#128274;</div>
-    <h1>Contenido Protegido</h1>
+    <h1>${PAGE_TITLE}</h1>
     <p class="sub">Introduce el código de acceso</p>
     <input type="password" id="code" placeholder="Código" autocomplete="off" autofocus>
     <button class="btn" id="unlock-btn">Desbloquear</button>
@@ -288,9 +358,9 @@ input[type=datetime-local]{
 </div>
 
 <script>
-var GITHUB_API = "https://api.github.com/repos/AndresRomero2001/protected-qr/contents/data.json";
-var ADMIN_HASH = "c6350fe9f34e025006dfb017d6d69e234d7433914d8e7110087e5c0bac4b89e5";
-var ENC_TOKEN = "ff8b8badbf94955c2081b19b2beeaf10:2c4fd7fa4ca9c13ad6c1439d:88b6913c10a944de8e3b025de37d5a45:f901dec9ed48f875e8249aa7bd4d5df32cfe2205960bb67c0344bf9bf32746a6eae32e0dff6e9937";
+var GITHUB_API = "${GITHUB_API_FILE}";
+var ADMIN_HASH = "${ADMIN_HASH}";
+var ENC_TOKEN = "${encryptedToken}";
 
 var data = null;
 var isAdmin = false;
@@ -694,4 +764,17 @@ document.getElementById("code").addEventListener("keydown", function(e) {
 document.getElementById("unlock-btn").addEventListener("click", unlock);
 </script>
 </body>
-</html>
+</html>`;
+}
+
+// ── Main ────────────────────────────────────────────────────────────
+function main() {
+  const html = buildHTML();
+  fs.writeFileSync(path.join(__dirname, "index.html"), html);
+  console.log("index.html generated!");
+  console.log('Admin code: "' + ADMIN_CODE + '"');
+  console.log('Default user code: "' + DEFAULT_USER_CODE + '"');
+  console.log("Deploy URL will be: " + DEPLOY_URL);
+}
+
+main();

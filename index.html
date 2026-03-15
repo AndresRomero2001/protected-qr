@@ -85,15 +85,17 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
 }
 .toolbar button:hover{background:rgba(139,92,246,.3)}
 
-#editor{
+.richtext{
   min-height:180px;max-height:400px;overflow-y:auto;
   padding:16px;border:2px solid rgba(255,255,255,.1);border-radius:12px;
   background:rgba(255,255,255,.04);outline:none;line-height:1.6;
   font-size:.95rem;color:#fff;
 }
-#editor:focus{border-color:rgba(139,92,246,.5)}
-#editor h2{font-size:1.2rem;margin-bottom:8px}
-#editor p{margin-bottom:8px}
+.richtext:focus{border-color:rgba(139,92,246,.5)}
+.richtext h2{font-size:1.2rem;margin-bottom:8px}
+.richtext p{margin-bottom:8px}
+.richtext img{max-width:100%;border-radius:12px;margin:8px 0}
+input[type=file]{display:none}
 
 .field{margin-bottom:16px}
 .field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
@@ -124,6 +126,11 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
 }
 .countdown-box .num{font-size:2rem;font-weight:700;color:var(--accent);line-height:1}
 .countdown-box .label{font-size:.7rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+.countdown-text{margin-top:20px;line-height:1.7;text-align:left}
+.countdown-text h2{margin-bottom:10px;font-size:1.3rem}
+.countdown-text p{margin-bottom:10px;color:rgba(255,255,255,.85)}
+.countdown-text a{color:#a78bfa}
+.countdown-text img{max-width:100%;border-radius:12px;margin:8px 0}
 
 /* Toggle switch */
 .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -178,6 +185,7 @@ input[type=datetime-local]{
       <div class="tabs">
         <button class="tab active" data-tab="preview">Vista previa</button>
         <button class="tab" data-tab="edit">Editar contenido</button>
+        <button class="tab" data-tab="countdown">Cuenta atrás</button>
         <button class="tab" data-tab="settings">Configuración</button>
       </div>
     </div>
@@ -191,22 +199,55 @@ input[type=datetime-local]{
           <div class="countdown-box"><div class="num" id="cd-mins">0</div><div class="label">Min</div></div>
           <div class="countdown-box"><div class="num" id="cd-secs">0</div><div class="label">Seg</div></div>
         </div>
+        <div id="countdown-text-display" class="countdown-text"></div>
       </div>
       <div id="content-display"></div>
     </div>
 
     <div id="panel-edit" class="panel hidden">
       <div class="toolbar">
-        <button onclick="execCmd('bold')" title="Negrita"><b>B</b></button>
-        <button onclick="execCmd('italic')" title="Cursiva"><i>I</i></button>
-        <button onclick="execCmd('underline')" title="Subrayado"><u>U</u></button>
-        <button onclick="addHeading()" title="Título">H</button>
-        <button onclick="addLink()" title="Enlace">&#128279;</button>
+        <button onclick="execCmd('bold','editor')" title="Negrita"><b>B</b></button>
+        <button onclick="execCmd('italic','editor')" title="Cursiva"><i>I</i></button>
+        <button onclick="execCmd('underline','editor')" title="Subrayado"><u>U</u></button>
+        <button onclick="addHeading('editor')" title="Título">H</button>
+        <button onclick="addLink('editor')" title="Enlace">&#128279;</button>
+        <button onclick="addImage('editor')" title="Imagen">&#128247;</button>
       </div>
-      <div id="editor" contenteditable="true"></div>
+      <input type="file" id="img-editor" accept="image/*" onchange="insertImage(this,'editor')">
+      <div id="editor" class="richtext" contenteditable="true"></div>
       <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="saveContent()">Guardar contenido</button>
         <span id="save-status" class="status"></span>
+      </div>
+    </div>
+
+    <div id="panel-countdown" class="panel hidden">
+      <div class="toggle-row">
+        <label>Activar cuenta atrás</label>
+        <label class="toggle"><input type="checkbox" id="countdown-toggle"><span class="slider"></span></label>
+      </div>
+      <div id="countdown-settings">
+        <div class="field">
+          <label>Fecha y hora objetivo</label>
+          <input type="datetime-local" id="countdown-date-input">
+        </div>
+        <div class="field">
+          <label>Texto debajo de la cuenta atrás</label>
+        </div>
+        <div class="toolbar">
+          <button onclick="execCmd('bold','cd-editor')" title="Negrita"><b>B</b></button>
+          <button onclick="execCmd('italic','cd-editor')" title="Cursiva"><i>I</i></button>
+          <button onclick="execCmd('underline','cd-editor')" title="Subrayado"><u>U</u></button>
+          <button onclick="addHeading('cd-editor')" title="Título">H</button>
+          <button onclick="addLink('cd-editor')" title="Enlace">&#128279;</button>
+          <button onclick="addImage('cd-editor')" title="Imagen">&#128247;</button>
+        </div>
+        <input type="file" id="img-cd-editor" accept="image/*" onchange="insertImage(this,'cd-editor')">
+        <div id="cd-editor" class="richtext" contenteditable="true"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="saveCountdown()">Guardar cuenta atrás</button>
+        <span id="cd-save-status" class="status"></span>
       </div>
     </div>
 
@@ -215,17 +256,7 @@ input[type=datetime-local]{
         <label>Código de acceso para usuarios</label>
         <input type="text" id="user-code-input" placeholder="Código de usuario">
       </div>
-      <div class="toggle-row">
-        <label>Mostrar cuenta atrás en lugar del contenido</label>
-        <label class="toggle"><input type="checkbox" id="countdown-toggle"><span class="slider"></span></label>
-      </div>
-      <div id="countdown-settings" class="hidden">
-        <div class="field">
-          <label>Fecha y hora de la cuenta atrás</label>
-          <input type="datetime-local" id="countdown-date-input">
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="saveSettings()">Guardar configuración</button>
         <span id="settings-status" class="status"></span>
       </div>
@@ -240,7 +271,7 @@ input[type=datetime-local]{
 <script>
 var GITHUB_API = "https://api.github.com/repos/AndresRomero2001/protected-qr/contents/data.json";
 var ADMIN_HASH = "c6350fe9f34e025006dfb017d6d69e234d7433914d8e7110087e5c0bac4b89e5";
-var ENC_TOKEN = "b77e81c398a26134863c56347b381929:181dfccbde796659c72b047e:0902c302060a17c40026521e355ebd0e:2f89684b3f513e3f2514537457dd852576811c0848a5ded9ce01e04bc017b76a3bc54cbdccffb1113b842ba8bfb892fd77f7cf6ffc5c3095f0e1c9ed36090804347297fd33c6a77e63a0823cb42069b2fe4bf1176ced58346e9a90fe5c";
+var ENC_TOKEN = "ab03df8f2a214d9d1e1c2946e949cc0a:8b12fd093730d7108e220b73:93baab339128a2d457ac0cbda9f730b5:54a68d1e5aed4882d6b0413bf74298fc6bec6ca19b820b9f7c1c7430428969d693e4ed3ddc348dda6645fa9f000d46294198c943eb1d11f89c6b1efa0dc1bea7cf80ec20d601e1975095b7fd6bd094300862337a9cc7d2df4650db6bd5";
 
 var data = null;
 var isAdmin = false;
@@ -398,9 +429,10 @@ function updateCountdownDisplay() {
 
 function renderPreview() {
   var showCD = data.showCountdown && data.countdownDate && new Date(data.countdownDate).getTime() > Date.now();
-  if (showCD && !isAdmin) {
+  if (showCD) {
     document.getElementById("countdown-display").classList.remove("hidden");
     document.getElementById("content-display").classList.add("hidden");
+    document.getElementById("countdown-text-display").innerHTML = data.countdownText || "";
     updateCountdownDisplay();
     if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(updateCountdownDisplay, 1000);
@@ -424,13 +456,10 @@ function showApp() {
     // Countdown settings
     var toggle = document.getElementById("countdown-toggle");
     toggle.checked = !!data.showCountdown;
-    document.getElementById("countdown-settings").classList.toggle("hidden", !data.showCountdown);
     if (data.countdownDate) {
       document.getElementById("countdown-date-input").value = data.countdownDate.slice(0, 16);
     }
-    toggle.addEventListener("change", function() {
-      document.getElementById("countdown-settings").classList.toggle("hidden", !this.checked);
-    });
+    document.getElementById("cd-editor").innerHTML = data.countdownText || "";
   }
 }
 
@@ -444,13 +473,27 @@ document.addEventListener("click", function(e) {
   var panel = document.getElementById("panel-" + tabName);
   if (panel) panel.classList.remove("hidden");
   if (tabName === "edit") document.getElementById("editor").innerHTML = data.content || "";
+  if (tabName === "countdown") document.getElementById("cd-editor").innerHTML = data.countdownText || "";
   if (tabName === "preview") renderPreview();
 });
 
 // ── Editor ──
-function execCmd(cmd) { document.execCommand(cmd, false, null); document.getElementById("editor").focus(); }
-function addHeading() { document.execCommand("formatBlock", false, "h2"); document.getElementById("editor").focus(); }
-function addLink() { var url = prompt("URL del enlace:"); if (url) document.execCommand("createLink", false, url); }
+var activeEditor = "editor";
+function focusEditor(id) { activeEditor = id; document.getElementById(id).focus(); }
+function execCmd(cmd, id) { focusEditor(id); document.execCommand(cmd, false, null); }
+function addHeading(id) { focusEditor(id); document.execCommand("formatBlock", false, "h2"); }
+function addLink(id) { var url = prompt("URL del enlace:"); if (url) { focusEditor(id); document.execCommand("createLink", false, url); } }
+function addImage(id) { activeEditor = id; document.getElementById("img-" + id).click(); }
+function insertImage(input, id) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById(id).focus();
+    document.execCommand("insertImage", false, e.target.result);
+  };
+  reader.readAsDataURL(input.files[0]);
+  input.value = "";
+}
 
 // ── Save content ──
 function saveContent() {
@@ -463,6 +506,31 @@ function saveContent() {
       statusEl.className = "status ok";
       statusEl.textContent = "Guardado correctamente";
       document.getElementById("content-display").innerHTML = data.content;
+    } else {
+      statusEl.className = "status err";
+      statusEl.textContent = "Error: " + (r.message || "desconocido");
+    }
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  }).catch(function() {
+    statusEl.className = "status err";
+    statusEl.textContent = "Error de conexión";
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  });
+}
+
+// ── Save countdown ──
+function saveCountdown() {
+  var statusEl = document.getElementById("cd-save-status");
+  statusEl.className = "status";
+  statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
+  data.showCountdown = document.getElementById("countdown-toggle").checked;
+  var cdVal = document.getElementById("countdown-date-input").value;
+  data.countdownDate = cdVal ? new Date(cdVal).toISOString() : "";
+  data.countdownText = document.getElementById("cd-editor").innerHTML;
+  saveData(data).then(function(r) {
+    if (r.content) {
+      statusEl.className = "status ok";
+      statusEl.textContent = "Guardado correctamente";
     } else {
       statusEl.className = "status err";
       statusEl.textContent = "Error: " + (r.message || "desconocido");
@@ -488,9 +556,6 @@ function saveSettings() {
   statusEl.className = "status";
   statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
   data.userCode = newCode;
-  data.showCountdown = document.getElementById("countdown-toggle").checked;
-  var cdVal = document.getElementById("countdown-date-input").value;
-  data.countdownDate = cdVal ? new Date(cdVal).toISOString() : "";
   saveData(data).then(function(r) {
     if (r.content) {
       statusEl.className = "status ok";

@@ -418,6 +418,17 @@ function fetchData() {
   }).then(function(r) { return r.json(); })
     .then(function(json) {
       fileSha = json.sha;
+      // If file > 1MB, content is null — use blob API
+      if (!json.content && json.git_url) {
+        return fetch(json.git_url, {
+          headers: { "Accept": "application/vnd.github.v3+json" }
+        }).then(function(r2) { return r2.json(); })
+          .then(function(blob) {
+            var raw = atob(blob.content.replace(/\\n/g, ""));
+            var decoded = decodeURIComponent(escape(raw));
+            return JSON.parse(decoded);
+          });
+      }
       var raw = atob(json.content);
       var decoded = decodeURIComponent(escape(raw));
       return JSON.parse(decoded);
@@ -595,14 +606,28 @@ function execCmd(cmd, id) { focusEditor(id); document.execCommand(cmd, false, nu
 function addHeading(id) { focusEditor(id); document.execCommand("formatBlock", false, "h2"); }
 function addLink(id) { var url = prompt("URL del enlace:"); if (url) { focusEditor(id); document.execCommand("createLink", false, url); } }
 function addImage(id) { activeEditor = id; document.getElementById("img-" + id).click(); }
-function insertImage(input, id) {
-  if (!input.files || !input.files[0]) return;
+function compressImage(file, maxW, quality, cb) {
   var reader = new FileReader();
   reader.onload = function(e) {
-    document.getElementById(id).focus();
-    document.execCommand("insertImage", false, e.target.result);
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      var canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = e.target.result;
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(file);
+}
+function insertImage(input, id) {
+  if (!input.files || !input.files[0]) return;
+  compressImage(input.files[0], 800, 0.7, function(dataUrl) {
+    document.getElementById(id).focus();
+    document.execCommand("insertImage", false, dataUrl);
+  });
   input.value = "";
 }
 

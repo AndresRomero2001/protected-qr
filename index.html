@@ -114,6 +114,41 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
   border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Countdown */
+.countdown{text-align:center;padding:20px 0}
+.countdown-title{font-size:1.1rem;color:var(--muted);margin-bottom:20px}
+.countdown-boxes{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.countdown-box{
+  background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);
+  border-radius:16px;padding:16px 12px;min-width:70px;text-align:center;
+}
+.countdown-box .num{font-size:2rem;font-weight:700;color:var(--accent);line-height:1}
+.countdown-box .label{font-size:.7rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.toggle-row label{font-size:.85rem;color:var(--muted)}
+.toggle{position:relative;width:48px;height:26px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  background:rgba(255,255,255,.15);border-radius:13px;transition:.3s;
+}
+.toggle .slider:before{
+  content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;transition:.3s;
+}
+.toggle input:checked+.slider{background:var(--accent)}
+.toggle input:checked+.slider:before{transform:translateX(22px)}
+
+input[type=datetime-local]{
+  width:100%;padding:12px 14px;border:2px solid rgba(255,255,255,.15);
+  border-radius:14px;background:rgba(255,255,255,.06);color:#fff;
+  font-size:.95rem;text-align:left;letter-spacing:0;outline:none;
+  transition:border .3s,box-shadow .3s;margin-bottom:0;
+  color-scheme:dark;
+}
+
 @media(max-width:480px){
   .card{padding:28px 20px}
   .card.wide{padding:20px 16px}
@@ -148,6 +183,15 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
     </div>
 
     <div id="panel-preview" class="panel">
+      <div id="countdown-display" class="countdown hidden">
+        <p class="countdown-title">Cuenta atrás...</p>
+        <div class="countdown-boxes">
+          <div class="countdown-box"><div class="num" id="cd-days">0</div><div class="label">Días</div></div>
+          <div class="countdown-box"><div class="num" id="cd-hours">0</div><div class="label">Horas</div></div>
+          <div class="countdown-box"><div class="num" id="cd-mins">0</div><div class="label">Min</div></div>
+          <div class="countdown-box"><div class="num" id="cd-secs">0</div><div class="label">Seg</div></div>
+        </div>
+      </div>
       <div id="content-display"></div>
     </div>
 
@@ -171,7 +215,17 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
         <label>Código de acceso para usuarios</label>
         <input type="text" id="user-code-input" placeholder="Código de usuario">
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="toggle-row">
+        <label>Mostrar cuenta atrás en lugar del contenido</label>
+        <label class="toggle"><input type="checkbox" id="countdown-toggle"><span class="slider"></span></label>
+      </div>
+      <div id="countdown-settings" class="hidden">
+        <div class="field">
+          <label>Fecha y hora de la cuenta atrás</label>
+          <input type="datetime-local" id="countdown-date-input">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
         <button class="btn btn-sm" onclick="saveSettings()">Guardar configuración</button>
         <span id="settings-status" class="status"></span>
       </div>
@@ -186,7 +240,7 @@ input:focus{border-color:rgba(139,92,246,.8);box-shadow:0 0 0 4px rgba(139,92,24
 <script>
 var GITHUB_API = "https://api.github.com/repos/AndresRomero2001/protected-qr/contents/data.json";
 var ADMIN_HASH = "c6350fe9f34e025006dfb017d6d69e234d7433914d8e7110087e5c0bac4b89e5";
-var ENC_TOKEN = "f30a49afdb9e99295af5033e3c92fda3:462c3b05065e3248334aeb11:4cfa3e5524a05133f6086e47d37603d7:a7fa480065661c39c2d5e934e4a8c62bb693ff3b428417dada5a17409d6b5908327fc25b8747be8ac28faf1d0968901f9baff85a97c77fc3e4d58c3d277d6568cb6f8133b0b0de09e396d7918256d16423631c13476498cd5c37164bef";
+var ENC_TOKEN = "b77e81c398a26134863c56347b381929:181dfccbde796659c72b047e:0902c302060a17c40026521e355ebd0e:2f89684b3f513e3f2514537457dd852576811c0848a5ded9ce01e04bc017b76a3bc54cbdccffb1113b842ba8bfb892fd77f7cf6ffc5c3095f0e1c9ed36090804347297fd33c6a77e63a0823cb42069b2fe4bf1176ced58346e9a90fe5c";
 
 var data = null;
 var isAdmin = false;
@@ -317,15 +371,66 @@ function unlock() {
   });
 }
 
+// ── Countdown ──
+var countdownInterval = null;
+
+function updateCountdownDisplay() {
+  var target = data.countdownDate ? new Date(data.countdownDate).getTime() : 0;
+  var now = Date.now();
+  var diff = target - now;
+  if (diff <= 0) {
+    // Countdown finished — show content
+    document.getElementById("countdown-display").classList.add("hidden");
+    document.getElementById("content-display").classList.remove("hidden");
+    document.getElementById("content-display").innerHTML = data.content || "";
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    return;
+  }
+  var d = Math.floor(diff / 86400000);
+  var h = Math.floor((diff % 86400000) / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  var s = Math.floor((diff % 60000) / 1000);
+  document.getElementById("cd-days").textContent = d;
+  document.getElementById("cd-hours").textContent = h;
+  document.getElementById("cd-mins").textContent = m;
+  document.getElementById("cd-secs").textContent = s;
+}
+
+function renderPreview() {
+  var showCD = data.showCountdown && data.countdownDate && new Date(data.countdownDate).getTime() > Date.now();
+  if (showCD && !isAdmin) {
+    document.getElementById("countdown-display").classList.remove("hidden");
+    document.getElementById("content-display").classList.add("hidden");
+    updateCountdownDisplay();
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(updateCountdownDisplay, 1000);
+  } else {
+    document.getElementById("countdown-display").classList.add("hidden");
+    document.getElementById("content-display").classList.remove("hidden");
+    document.getElementById("content-display").innerHTML = data.content || "";
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  }
+}
+
 // ── Show app ──
 function showApp() {
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("content-display").innerHTML = data.content || "";
+  renderPreview();
   if (isAdmin) {
     document.getElementById("admin-bar").classList.remove("hidden");
     document.getElementById("editor").innerHTML = data.content || "";
     document.getElementById("user-code-input").value = data.userCode || "";
+    // Countdown settings
+    var toggle = document.getElementById("countdown-toggle");
+    toggle.checked = !!data.showCountdown;
+    document.getElementById("countdown-settings").classList.toggle("hidden", !data.showCountdown);
+    if (data.countdownDate) {
+      document.getElementById("countdown-date-input").value = data.countdownDate.slice(0, 16);
+    }
+    toggle.addEventListener("change", function() {
+      document.getElementById("countdown-settings").classList.toggle("hidden", !this.checked);
+    });
   }
 }
 
@@ -339,7 +444,7 @@ document.addEventListener("click", function(e) {
   var panel = document.getElementById("panel-" + tabName);
   if (panel) panel.classList.remove("hidden");
   if (tabName === "edit") document.getElementById("editor").innerHTML = data.content || "";
-  if (tabName === "preview") document.getElementById("content-display").innerHTML = data.content || "";
+  if (tabName === "preview") renderPreview();
 });
 
 // ── Editor ──
@@ -383,6 +488,9 @@ function saveSettings() {
   statusEl.className = "status";
   statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
   data.userCode = newCode;
+  data.showCountdown = document.getElementById("countdown-toggle").checked;
+  var cdVal = document.getElementById("countdown-date-input").value;
+  data.countdownDate = cdVal ? new Date(cdVal).toISOString() : "";
   saveData(data).then(function(r) {
     if (r.content) {
       statusEl.className = "status ok";

@@ -210,7 +210,7 @@ input[type=datetime-local]{
   background:linear-gradient(135deg,#1a1744,#2d2860);
   border:1px solid rgba(139,92,246,.3);border-radius:24px;
   padding:28px 24px;max-width:580px;width:100%;max-height:80vh;
-  overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.5);position:relative;
+  overflow-y:auto;overflow-x:hidden;box-shadow:0 16px 48px rgba(0,0,0,.5);position:relative;
 }
 .modal-box::-webkit-scrollbar{width:6px}
 .modal-box::-webkit-scrollbar-thumb{background:rgba(139,92,246,.3);border-radius:3px}
@@ -220,7 +220,7 @@ input[type=datetime-local]{
   border-radius:8px;transition:.15s;
 }
 .modal-close:hover{background:rgba(255,255,255,.1);color:#fff}
-.modal-content{line-height:1.7;margin-top:8px}
+.modal-content{line-height:1.7;margin-top:8px;overflow-wrap:break-word;word-break:break-word}
 .modal-content h2{margin-bottom:10px;font-size:1.3rem}
 .modal-content p{margin-bottom:10px;color:rgba(255,255,255,.85)}
 .modal-content a{color:#a78bfa}

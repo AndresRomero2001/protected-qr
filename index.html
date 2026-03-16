@@ -179,6 +179,7 @@ input[type=file]{display:none}
 }
 .toggle input:checked+.slider{background:var(--accent)}
 .toggle input:checked+.slider:before{transform:translateX(22px)}
+#page-disabled-toggle:checked+.slider{background:var(--err)!important}
 
 input[type=datetime-local]{
   width:100%;padding:12px 14px;border:2px solid rgba(255,255,255,.15);
@@ -206,6 +207,16 @@ input[type=datetime-local]{
     <input type="password" id="code" placeholder="Código" autocomplete="off" autofocus>
     <button class="btn" id="unlock-btn">Desbloquear</button>
     <p class="error" id="error"></p>
+  </div>
+</div>
+
+<!-- DISABLED PAGE -->
+<div id="disabled-screen" class="screen hidden">
+  <div class="card fade-in">
+    <div class="lock">&#128533;</div>
+    <h1>Página no disponible</h1>
+    <p class="sub" style="margin-bottom:12px">He decidido pausar esta página por ahora. Puede que vuelva pronto.</p>
+    <button class="btn" style="background:rgba(255,255,255,.1);max-width:200px;margin:0 auto" onclick="location.reload()">Reintentar</button>
   </div>
 </div>
 
@@ -294,7 +305,14 @@ input[type=datetime-local]{
         <label>Código de acceso para usuarios</label>
         <input type="text" id="user-code-input" placeholder="Código de usuario">
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="toggle-row" style="margin-top:8px;padding:14px 16px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:14px">
+        <div>
+          <label style="color:var(--err);font-weight:600">Desactivar página</label>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">Los usuarios verán un mensaje de que la página no está disponible</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="page-disabled-toggle"><span class="slider" style="background:rgba(248,113,113,.25)"></span></label>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px">
         <button class="btn btn-sm" onclick="saveSettings()">Guardar configuración</button>
         <span id="settings-status" class="status"></span>
       </div>
@@ -626,6 +644,12 @@ function renderPreview() {
 
 // ── Show app ──
 function showApp() {
+  // If page is disabled and user is not admin, show disabled screen
+  if (data.pageDisabled && !isAdmin) {
+    document.getElementById("gate").classList.add("hidden");
+    document.getElementById("disabled-screen").classList.remove("hidden");
+    return;
+  }
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   renderPreview();
@@ -633,6 +657,7 @@ function showApp() {
     document.getElementById("admin-bar").classList.remove("hidden");
     document.getElementById("editor").innerHTML = data.content || "";
     document.getElementById("user-code-input").value = data.userCode || "";
+    document.getElementById("page-disabled-toggle").checked = !!data.pageDisabled;
     // Countdown settings
     var toggle = document.getElementById("countdown-toggle");
     toggle.checked = !!data.showCountdown;
@@ -822,6 +847,7 @@ function saveSettings() {
   statusEl.className = "status";
   statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
   data.userCode = newCode;
+  data.pageDisabled = document.getElementById("page-disabled-toggle").checked;
   saveData(data).then(function(r) {
     if (r.content) {
       statusEl.className = "status ok";
@@ -843,6 +869,7 @@ function logout() {
   data = null; isAdmin = false; ghToken = null; fileSha = null;
   document.getElementById("code").value = "";
   document.getElementById("app").classList.add("hidden");
+  document.getElementById("disabled-screen").classList.add("hidden");
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("admin-bar").classList.add("hidden");
   document.querySelectorAll(".panel").forEach(function(p, i) {

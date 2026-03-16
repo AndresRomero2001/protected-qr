@@ -59,7 +59,7 @@ function encryptToken(token, password) {
 const encryptedToken = encryptToken(ghToken, ADMIN_CODE);
 
 // ── Write data.json ─────────────────────────────────────────────────
-const dataJson = { userCode: DEFAULT_USER_CODE, content: DEFAULT_CONTENT, showCountdown: false, countdownDate: "", countdownText: "" };
+const dataJson = { userCode: DEFAULT_USER_CODE, content: DEFAULT_CONTENT, showCountdown: false, countdownDate: "", countdownText: "", pageDisabled: false };
 fs.writeFileSync(
   path.join(__dirname, "data.json"),
   JSON.stringify(dataJson, null, 2)

@@ -151,6 +151,19 @@ input[type=file]{display:none}
 .countdown-text a{color:#a78bfa}
 .countdown-text img{max-width:100%;border-radius:12px;margin:8px 0}
 
+/* Day navigator */
+.day-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.day-nav button{
+  width:36px;height:36px;border:none;border-radius:10px;
+  background:rgba(255,255,255,.08);color:#fff;cursor:pointer;
+  font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.day-nav button:hover{background:rgba(139,92,246,.3)}
+.day-nav button:disabled{opacity:.3;cursor:default}
+.day-nav .day-label{font-size:.9rem;color:#fff;font-weight:500;flex:1;text-align:center}
+.day-nav .day-date{font-size:.8rem;color:var(--muted)}
+.day-hint{font-size:.8rem;color:var(--muted);margin-bottom:10px}
+
 /* Toggle switch */
 .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .toggle-row label{font-size:.85rem;color:var(--muted)}
@@ -250,8 +263,14 @@ input[type=datetime-local]{
           <label>Fecha y hora objetivo (hora de Madrid)</label>
           <input type="datetime-local" id="countdown-date-input">
         </div>
-        <div class="field">
-          <label>Texto debajo de la cuenta atrás</label>
+        <p class="day-hint">Contenido diario (cambia automáticamente a las 10:00 hora de Madrid)</p>
+        <div class="day-nav">
+          <button id="day-prev" onclick="navDay(-1)">&#9664;</button>
+          <div>
+            <div class="day-label" id="day-label">—</div>
+            <div class="day-date" id="day-date"></div>
+          </div>
+          <button id="day-next" onclick="navDay(1)">&#9654;</button>
         </div>
         <div class="toolbar">
           <button onclick="execCmd('bold','cd-editor')" title="Negrita"><b>B</b></button>
@@ -458,6 +477,105 @@ function utcToMadridInput(isoStr) {
 
 // ── Countdown ──
 var countdownInterval = null;
+var currentDayIndex = 0;
+var dayKeys = [];
+
+// Get current date string in Madrid timezone (YYYY-MM-DD)
+function getMadridDateStr(date) {
+  var d = date || new Date();
+  var parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(d);
+  var o = {};
+  parts.forEach(function(p) { o[p.type] = p.value; });
+  return o.year + "-" + o.month + "-" + o.day;
+}
+
+// Get current hour in Madrid timezone
+function getMadridHour() {
+  var parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Madrid", hour: "numeric", hour12: false
+  }).formatToParts(new Date());
+  var h = 0;
+  parts.forEach(function(p) { if (p.type === "hour") h = parseInt(p.value); });
+  return h;
+}
+
+// Get the active daily content key: today if >= 10:00 Madrid, yesterday otherwise
+function getActiveDayKey() {
+  var now = new Date();
+  var todayStr = getMadridDateStr(now);
+  if (getMadridHour() >= 10) return todayStr;
+  // Before 10am — use yesterday
+  var yesterday = new Date(now.getTime() - 86400000);
+  return getMadridDateStr(yesterday);
+}
+
+// Build sorted list of day keys from today to countdown target date
+function buildDayKeys() {
+  dayKeys = [];
+  var cdVal = document.getElementById("countdown-date-input").value;
+  if (!cdVal) return;
+  var targetStr = cdVal.split("T")[0];
+  var todayStr = getMadridDateStr();
+  // Parse as parts to avoid timezone issues
+  var tp = todayStr.split("-").map(Number);
+  var d = new Date(tp[0], tp[1] - 1, tp[2]);
+  var ep = targetStr.split("-").map(Number);
+  var end = new Date(ep[0], ep[1] - 1, ep[2]);
+  while (d <= end) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    dayKeys.push(y + "-" + m + "-" + day);
+    d.setDate(d.getDate() + 1);
+  }
+}
+
+// Format day key for display
+function formatDayLabel(key) {
+  var d = new Date(key + "T12:00:00");
+  var weekdays = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  var months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return weekdays[d.getDay()] + " " + d.getDate() + " " + months[d.getMonth()];
+}
+
+// Save current editor content for the current day before navigating
+function saveDayEditorContent() {
+  if (!data.dailyContent) data.dailyContent = {};
+  if (dayKeys.length > 0 && dayKeys[currentDayIndex]) {
+    data.dailyContent[dayKeys[currentDayIndex]] = document.getElementById("cd-editor").innerHTML;
+  }
+}
+
+// Navigate days
+function navDay(dir) {
+  saveDayEditorContent();
+  currentDayIndex += dir;
+  if (currentDayIndex < 0) currentDayIndex = 0;
+  if (currentDayIndex >= dayKeys.length) currentDayIndex = dayKeys.length - 1;
+  renderDayEditor();
+}
+
+function renderDayEditor() {
+  if (dayKeys.length === 0) {
+    document.getElementById("day-label").textContent = "Selecciona una fecha objetivo";
+    document.getElementById("day-date").textContent = "";
+    document.getElementById("cd-editor").innerHTML = "";
+    document.getElementById("day-prev").disabled = true;
+    document.getElementById("day-next").disabled = true;
+    return;
+  }
+  var key = dayKeys[currentDayIndex];
+  var todayKey = getActiveDayKey();
+  var label = formatDayLabel(key);
+  if (key === getMadridDateStr()) label += " (hoy)";
+  document.getElementById("day-label").textContent = label;
+  document.getElementById("day-date").textContent = "Día " + (currentDayIndex + 1) + " de " + dayKeys.length;
+  document.getElementById("cd-editor").innerHTML = (data.dailyContent && data.dailyContent[key]) || "";
+  document.getElementById("day-prev").disabled = currentDayIndex <= 0;
+  document.getElementById("day-next").disabled = currentDayIndex >= dayKeys.length - 1;
+}
 
 function updateCountdownDisplay() {
   var target = data.countdownDate ? new Date(data.countdownDate).getTime() : 0;
@@ -479,6 +597,11 @@ function updateCountdownDisplay() {
   document.getElementById("cd-hours").textContent = h;
   document.getElementById("cd-mins").textContent = m;
   document.getElementById("cd-secs").textContent = s;
+
+  // Update daily content based on current Madrid time
+  var activeKey = getActiveDayKey();
+  var dailyHtml = (data.dailyContent && data.dailyContent[activeKey]) || "";
+  document.getElementById("countdown-text-display").innerHTML = dailyHtml;
 }
 
 function renderPreview() {
@@ -486,7 +609,10 @@ function renderPreview() {
   if (showCD) {
     document.getElementById("countdown-display").classList.remove("hidden");
     document.getElementById("content-display").classList.add("hidden");
-    document.getElementById("countdown-text-display").innerHTML = data.countdownText || "";
+    // Set initial daily content
+    var activeKey = getActiveDayKey();
+    var dailyHtml = (data.dailyContent && data.dailyContent[activeKey]) || "";
+    document.getElementById("countdown-text-display").innerHTML = dailyHtml;
     updateCountdownDisplay();
     if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(updateCountdownDisplay, 1000);
@@ -511,7 +637,22 @@ function showApp() {
     var toggle = document.getElementById("countdown-toggle");
     toggle.checked = !!data.showCountdown;
     document.getElementById("countdown-date-input").value = utcToMadridInput(data.countdownDate);
-    document.getElementById("cd-editor").innerHTML = data.countdownText || "";
+    if (!data.dailyContent) data.dailyContent = {};
+    // Migrate old countdownText to dailyContent if needed
+    if (data.countdownText && Object.keys(data.dailyContent).length === 0) {
+      var todayKey = getMadridDateStr();
+      data.dailyContent[todayKey] = data.countdownText;
+    }
+    buildDayKeys();
+    currentDayIndex = 0;
+    renderDayEditor();
+    // Rebuild day keys when date input changes
+    document.getElementById("countdown-date-input").addEventListener("change", function() {
+      saveDayEditorContent();
+      buildDayKeys();
+      currentDayIndex = 0;
+      renderDayEditor();
+    });
   }
 }
 
@@ -525,7 +666,7 @@ document.addEventListener("click", function(e) {
   var panel = document.getElementById("panel-" + tabName);
   if (panel) panel.classList.remove("hidden");
   if (tabName === "edit") document.getElementById("editor").innerHTML = data.content || "";
-  if (tabName === "countdown") document.getElementById("cd-editor").innerHTML = data.countdownText || "";
+  if (tabName === "countdown") { buildDayKeys(); renderDayEditor(); }
   if (tabName === "preview") renderPreview();
 });
 
@@ -648,10 +789,10 @@ function saveCountdown() {
   var statusEl = document.getElementById("cd-save-status");
   statusEl.className = "status";
   statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
+  saveDayEditorContent();
   data.showCountdown = document.getElementById("countdown-toggle").checked;
   var cdVal = document.getElementById("countdown-date-input").value;
   data.countdownDate = cdVal ? madridToUTC(cdVal).toISOString() : "";
-  data.countdownText = document.getElementById("cd-editor").innerHTML;
   saveData(data).then(function(r) {
     if (r.content) {
       statusEl.className = "status ok";

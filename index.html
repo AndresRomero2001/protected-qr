@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Contenido Protegido</title>
 <style>
 :root {
@@ -451,9 +454,12 @@ function decryptToken(encStr, password) {
 }
 
 // ── GitHub API ──
+function nocache(url) { return url + (url.indexOf("?") === -1 ? "?" : "&") + "_t=" + Date.now(); }
+
 function fetchData() {
-  return fetch(GITHUB_API, {
-    headers: { "Accept": "application/vnd.github.v3+json" }
+  return fetch(nocache(GITHUB_API), {
+    headers: { "Accept": "application/vnd.github.v3+json" },
+    cache: "no-store"
   }).then(function(r) { return r.json(); })
     .then(function(json) {
       fileSha = json.sha;
@@ -497,8 +503,9 @@ function saveData(obj, _retry) {
       }
       // SHA conflict — re-fetch latest SHA and retry once
       if (!_retry && result.message && result.message.indexOf("does not match") !== -1) {
-        return fetch(GITHUB_API, {
-          headers: { "Authorization": "token " + ghToken, "Accept": "application/vnd.github.v3+json" }
+        return fetch(nocache(GITHUB_API), {
+          headers: { "Authorization": "token " + ghToken, "Accept": "application/vnd.github.v3+json" },
+          cache: "no-store"
         }).then(function(r2) { return r2.json(); })
           .then(function(json) {
             fileSha = json.sha;

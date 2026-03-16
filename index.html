@@ -426,6 +426,55 @@ function saveData(obj) {
     });
 }
 
+// ── Access logging ──
+var LOG_URL = "https://script.google.com/macros/s/AKfycbziuLitLJm6Y7pNpgw_-6adc-9CrJFez4zniuruPn4CcjO_g7LnzyzBEFbGTar04hPm/exec";
+
+function getFingerprint() {
+  var raw = [
+    navigator.userAgent,
+    screen.width + "x" + screen.height,
+    screen.colorDepth,
+    navigator.language,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency || "",
+    navigator.platform || ""
+  ].join("|");
+  // Simple hash (djb2)
+  var hash = 5381;
+  for (var i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) + hash) + raw.charCodeAt(i);
+    hash = hash & 0xFFFFFFFF;
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function logAccess(type) {
+  if (LOG_URL === "PENDING") return;
+  var ts = new Date().toLocaleString("es-ES", {timeZone: "Europe/Madrid", hour12: false});
+  var payload = {
+    timestamp: ts,
+    type: type,
+    fingerprint: getFingerprint(),
+    ip: "",
+    userAgent: navigator.userAgent,
+    screen: screen.width + "x" + screen.height,
+    lang: navigator.language + " | " + (Intl.DateTimeFormat().resolvedOptions().timeZone)
+  };
+  // Get IP then send log
+  fetch("https://api.ipify.org?format=json")
+    .then(function(r) { return r.json(); })
+    .then(function(j) { payload.ip = j.ip; })
+    .catch(function() { payload.ip = "desconocida"; })
+    .finally(function() {
+      fetch(LOG_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      }).catch(function() {});
+    });
+}
+
 // ── Unlock ──
 function unlock() {
   var code = document.getElementById("code").value;
@@ -648,10 +697,12 @@ function showApp() {
   if (data.pageDisabled && !isAdmin) {
     document.getElementById("gate").classList.add("hidden");
     document.getElementById("disabled-screen").classList.remove("hidden");
+    logAccess("usuario (página desactivada)");
     return;
   }
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
+  logAccess(isAdmin ? "admin" : "usuario");
   renderPreview();
   if (isAdmin) {
     document.getElementById("admin-bar").classList.remove("hidden");

@@ -189,6 +189,40 @@ input[type=datetime-local]{
   color-scheme:dark;
 }
 
+/* Extra content button & modal */
+.extra-btn{
+  display:block;margin:16px auto 0;padding:12px 28px;border:2px solid rgba(139,92,246,.4);
+  border-radius:14px;background:rgba(139,92,246,.1);color:var(--accent);
+  font-size:.95rem;font-weight:600;cursor:pointer;transition:.2s;
+  backdrop-filter:blur(10px);
+}
+.extra-btn:hover{background:rgba(139,92,246,.25);border-color:rgba(139,92,246,.6);transform:translateY(-1px)}
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:900;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  animation:fadeIn .3s ease;
+}
+.modal-box{
+  background:linear-gradient(135deg,#1a1744,#2d2860);
+  border:1px solid rgba(139,92,246,.3);border-radius:24px;
+  padding:28px 24px;max-width:580px;width:100%;max-height:80vh;
+  overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.5);position:relative;
+}
+.modal-box::-webkit-scrollbar{width:6px}
+.modal-box::-webkit-scrollbar-thumb{background:rgba(139,92,246,.3);border-radius:3px}
+.modal-close{
+  position:absolute;top:12px;right:16px;background:none;border:none;
+  color:var(--muted);font-size:1.4rem;cursor:pointer;padding:4px 8px;
+  border-radius:8px;transition:.15s;
+}
+.modal-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.modal-content{line-height:1.7;margin-top:8px}
+.modal-content h2{margin-bottom:10px;font-size:1.3rem}
+.modal-content p{margin-bottom:10px;color:rgba(255,255,255,.85)}
+.modal-content a{color:#a78bfa}
+.modal-content img{max-width:100%;border-radius:12px;margin:8px 0}
+
 @media(max-width:480px){
   .card{padding:28px 20px}
   .card.wide{padding:20px 16px}
@@ -229,6 +263,7 @@ input[type=datetime-local]{
         <button class="tab active" data-tab="preview">Vista previa</button>
         <button class="tab" data-tab="edit">Editar contenido</button>
         <button class="tab" data-tab="countdown">Cuenta atrás</button>
+        <button class="tab" data-tab="extra">Contenido extra</button>
         <button class="tab" data-tab="settings">Configuración</button>
       </div>
     </div>
@@ -300,10 +335,36 @@ input[type=datetime-local]{
       </div>
     </div>
 
+    <div id="panel-extra" class="panel hidden">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px">Este contenido se muestra en un botón debajo del panel principal. Se puede ocultar desde Configuración.</p>
+      <div class="field">
+        <label>Texto del botón</label>
+        <input type="text" id="extra-btn-text" placeholder="💝 Ver más" style="text-align:left;letter-spacing:0">
+      </div>
+      <div class="toolbar">
+        <button onclick="execCmd('bold','extra-editor')" title="Negrita"><b>B</b></button>
+        <button onclick="execCmd('italic','extra-editor')" title="Cursiva"><i>I</i></button>
+        <button onclick="execCmd('underline','extra-editor')" title="Subrayado"><u>U</u></button>
+        <button onclick="addHeading('extra-editor')" title="Título">H</button>
+        <button onclick="addLink('extra-editor')" title="Enlace">&#128279;</button>
+        <button onclick="addImage('extra-editor')" title="Imagen">&#128247;</button>
+      </div>
+      <input type="file" id="img-extra-editor" accept="image/*" onchange="insertImage(this,'extra-editor')">
+      <div id="extra-editor" class="richtext" contenteditable="true"></div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="saveExtra()">Guardar contenido extra</button>
+        <span id="extra-save-status" class="status"></span>
+      </div>
+    </div>
+
     <div id="panel-settings" class="panel hidden">
       <div class="field">
         <label>Código de acceso para usuarios</label>
         <input type="text" id="user-code-input" placeholder="Código de usuario">
+      </div>
+      <div class="toggle-row" style="margin-top:8px">
+        <label>Mostrar botón de contenido extra</label>
+        <label class="toggle"><input type="checkbox" id="extra-btn-toggle"><span class="slider"></span></label>
       </div>
       <div class="toggle-row" style="margin-top:8px;padding:14px 16px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:14px">
         <div>
@@ -321,6 +382,15 @@ input[type=datetime-local]{
     <div class="footer">
       <button class="link-btn" onclick="logout()">Cerrar sesión</button>
     </div>
+  </div>
+  <button id="extra-btn" class="extra-btn hidden" onclick="openExtraModal()">&#128140; Ver más</button>
+</div>
+
+<!-- Extra content modal -->
+<div id="extra-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeExtraModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeExtraModal()">&#10005;</button>
+    <div id="extra-modal-content" class="modal-content"></div>
   </div>
 </div>
 
@@ -704,11 +774,23 @@ function showApp() {
   document.getElementById("app").classList.remove("hidden");
   logAccess(isAdmin ? "admin" : "usuario");
   renderPreview();
+  // Show extra button if enabled
+  var extraBtn = document.getElementById("extra-btn");
+  if (data.showExtraBtn !== false && data.extraContent) {
+    extraBtn.classList.remove("hidden");
+    extraBtn.innerHTML = data.extraBtnText || "\ud83d\udc9d Ver más";
+  } else if (isAdmin) {
+    // Admin always sees it (dimmed if disabled)
+    extraBtn.classList.remove("hidden");
+    extraBtn.innerHTML = data.extraBtnText || "\ud83d\udc9d Ver más";
+    if (!data.showExtraBtn) extraBtn.style.opacity = "0.4";
+  }
   if (isAdmin) {
     document.getElementById("admin-bar").classList.remove("hidden");
     document.getElementById("editor").innerHTML = data.content || "";
     document.getElementById("user-code-input").value = data.userCode || "";
     document.getElementById("page-disabled-toggle").checked = !!data.pageDisabled;
+    document.getElementById("extra-btn-toggle").checked = data.showExtraBtn !== false;
     // Countdown settings
     var toggle = document.getElementById("countdown-toggle");
     toggle.checked = !!data.showCountdown;
@@ -743,6 +825,10 @@ document.addEventListener("click", function(e) {
   if (panel) panel.classList.remove("hidden");
   if (tabName === "edit") document.getElementById("editor").innerHTML = data.content || "";
   if (tabName === "countdown") { buildDayKeys(); renderDayEditor(); }
+  if (tabName === "extra") {
+    document.getElementById("extra-editor").innerHTML = data.extraContent || "";
+    document.getElementById("extra-btn-text").value = data.extraBtnText || "\ud83d\udc9d Ver más";
+  }
   if (tabName === "preview") renderPreview();
 });
 
@@ -885,6 +971,45 @@ function saveCountdown() {
   });
 }
 
+// ── Extra content modal ──
+function openExtraModal() {
+  document.getElementById("extra-modal-content").innerHTML = data.extraContent || "";
+  document.getElementById("extra-modal").classList.remove("hidden");
+}
+function closeExtraModal() {
+  document.getElementById("extra-modal").classList.add("hidden");
+}
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" && !document.getElementById("extra-modal").classList.contains("hidden")) {
+    closeExtraModal();
+  }
+});
+
+// ── Save extra content ──
+function saveExtra() {
+  var statusEl = document.getElementById("extra-save-status");
+  statusEl.className = "status";
+  statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
+  data.extraContent = document.getElementById("extra-editor").innerHTML;
+  data.extraBtnText = document.getElementById("extra-btn-text").value.trim() || "\ud83d\udc9d Ver más";
+  saveData(data).then(function(r) {
+    if (r.content) {
+      statusEl.className = "status ok";
+      statusEl.textContent = "Guardado correctamente";
+      // Update button text live
+      document.getElementById("extra-btn").innerHTML = data.extraBtnText;
+    } else {
+      statusEl.className = "status err";
+      statusEl.textContent = "Error: " + (r.message || "desconocido");
+    }
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  }).catch(function() {
+    statusEl.className = "status err";
+    statusEl.textContent = "Error de conexión";
+    setTimeout(function() { statusEl.textContent = ""; }, 3000);
+  });
+}
+
 // ── Save settings ──
 function saveSettings() {
   var statusEl = document.getElementById("settings-status");
@@ -898,6 +1023,7 @@ function saveSettings() {
   statusEl.className = "status";
   statusEl.innerHTML = '<span class="spinner"></span>Guardando...';
   data.userCode = newCode;
+  data.showExtraBtn = document.getElementById("extra-btn-toggle").checked;
   data.pageDisabled = document.getElementById("page-disabled-toggle").checked;
   saveData(data).then(function(r) {
     if (r.content) {

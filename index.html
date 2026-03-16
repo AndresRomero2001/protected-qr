@@ -256,7 +256,8 @@ input[type=datetime-local]{
 
 <!-- APP -->
 <div id="app" class="screen hidden">
-  <div class="card wide fade-in">
+<div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:640px">
+  <div class="card wide fade-in" style="max-width:100%">
     <div id="admin-bar" class="hidden">
       <span class="admin-badge">&#128737; Administrador</span>
       <div class="tabs">
@@ -385,6 +386,7 @@ input[type=datetime-local]{
   </div>
   <button id="extra-btn" class="extra-btn hidden" onclick="openExtraModal()">&#128140; Ver más</button>
 </div>
+</div>
 
 <!-- Extra content modal -->
 <div id="extra-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeExtraModal()">
@@ -472,7 +474,7 @@ function fetchData() {
     });
 }
 
-function saveData(obj) {
+function saveData(obj, _retry) {
   var content = JSON.stringify(obj, null, 2);
   var encoded = btoa(unescape(encodeURIComponent(content)));
   return fetch(GITHUB_API, {
@@ -491,6 +493,17 @@ function saveData(obj) {
     .then(function(result) {
       if (result.content && result.content.sha) {
         fileSha = result.content.sha;
+        return result;
+      }
+      // SHA conflict — re-fetch latest SHA and retry once
+      if (!_retry && result.message && result.message.indexOf("does not match") !== -1) {
+        return fetch(GITHUB_API, {
+          headers: { "Authorization": "token " + ghToken, "Accept": "application/vnd.github.v3+json" }
+        }).then(function(r2) { return r2.json(); })
+          .then(function(json) {
+            fileSha = json.sha;
+            return saveData(obj, true);
+          });
       }
       return result;
     });

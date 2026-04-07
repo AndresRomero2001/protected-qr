@@ -671,20 +671,30 @@ function getActiveDayKey() {
 // Build sorted list of day keys: includes existing dailyContent keys + today to target
 function buildDayKeys() {
   dayKeys = [];
+  // Get target date from data (UTC ISO) — more reliable than parsing input format
+  var targetStr = "";
+  if (data.countdownDate) {
+    targetStr = getMadridDateStr(new Date(data.countdownDate));
+  }
+  // Also try from input if user just changed it
   var cdVal = document.getElementById("countdown-date-input").value;
-  var targetStr = cdVal ? cdVal.split("T")[0] : "";
+  if (cdVal) {
+    // datetime-local value is always "YYYY-MM-DDTHH:MM" per spec
+    var inputDate = cdVal.split("T")[0];
+    if (inputDate && inputDate.match(/^\d{4}-\d{2}-\d{2}$/)) targetStr = inputDate;
+  }
   var todayStr = getMadridDateStr();
 
   // Collect all existing dailyContent keys
-  var existing = {};
-  if (data.dailyContent) {
-    Object.keys(data.dailyContent).forEach(function(k) { existing[k] = true; });
-  }
-
-  // Find the earliest date: min of existing keys and today
-  var allDates = Object.keys(existing).concat([todayStr]);
+  var allDates = [todayStr];
   if (targetStr) allDates.push(targetStr);
+  if (data.dailyContent) {
+    Object.keys(data.dailyContent).forEach(function(k) {
+      if (k.match(/^\d{4}-\d{2}-\d{2}$/)) allDates.push(k);
+    });
+  }
   allDates.sort();
+  if (allDates.length === 0) return;
   var startStr = allDates[0];
   var endStr = allDates[allDates.length - 1];
 

@@ -668,17 +668,30 @@ function getActiveDayKey() {
   return getMadridDateStr(yesterday);
 }
 
-// Build sorted list of day keys from today to countdown target date
+// Build sorted list of day keys: includes existing dailyContent keys + today to target
 function buildDayKeys() {
   dayKeys = [];
   var cdVal = document.getElementById("countdown-date-input").value;
-  if (!cdVal) return;
-  var targetStr = cdVal.split("T")[0];
+  var targetStr = cdVal ? cdVal.split("T")[0] : "";
   var todayStr = getMadridDateStr();
-  // Parse as parts to avoid timezone issues
-  var tp = todayStr.split("-").map(Number);
-  var d = new Date(tp[0], tp[1] - 1, tp[2]);
-  var ep = targetStr.split("-").map(Number);
+
+  // Collect all existing dailyContent keys
+  var existing = {};
+  if (data.dailyContent) {
+    Object.keys(data.dailyContent).forEach(function(k) { existing[k] = true; });
+  }
+
+  // Find the earliest date: min of existing keys and today
+  var allDates = Object.keys(existing).concat([todayStr]);
+  if (targetStr) allDates.push(targetStr);
+  allDates.sort();
+  var startStr = allDates[0];
+  var endStr = allDates[allDates.length - 1];
+
+  // Generate range from earliest to latest
+  var sp = startStr.split("-").map(Number);
+  var d = new Date(sp[0], sp[1] - 1, sp[2]);
+  var ep = endStr.split("-").map(Number);
   var end = new Date(ep[0], ep[1] - 1, ep[2]);
   while (d <= end) {
     var y = d.getFullYear();

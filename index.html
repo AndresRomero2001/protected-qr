@@ -226,28 +226,6 @@ input[type=datetime-local]{
 .modal-content a{color:#a78bfa}
 .modal-content img{max-width:100%;border-radius:12px;margin:8px 0}
 
-/* Invisible-text mode: content is transparent until user selects it */
-.text-invisible #content-display,
-.text-invisible #content-display *,
-.text-invisible #countdown-text-display,
-.text-invisible #countdown-text-display *,
-.text-invisible #extra-modal-content,
-.text-invisible #extra-modal-content *{
-  color:transparent!important;text-shadow:none!important;
-  -webkit-text-fill-color:transparent!important;
-}
-.text-invisible #content-display ::selection,
-.text-invisible #countdown-text-display ::selection,
-.text-invisible #extra-modal-content ::selection{
-  color:#fff!important;-webkit-text-fill-color:#fff!important;
-  background:rgba(139,92,246,.55)!important;
-}
-.text-invisible #content-display ::-moz-selection,
-.text-invisible #countdown-text-display ::-moz-selection,
-.text-invisible #extra-modal-content ::-moz-selection{
-  color:#fff!important;background:rgba(139,92,246,.55)!important;
-}
-
 @media(max-width:480px){
   .card{padding:28px 20px}
   .card.wide{padding:20px 16px}
@@ -391,13 +369,6 @@ input[type=datetime-local]{
       <div class="toggle-row" style="margin-top:8px">
         <label>Mostrar botón de contenido extra</label>
         <label class="toggle"><input type="checkbox" id="extra-btn-toggle"><span class="slider"></span></label>
-      </div>
-      <div class="toggle-row" style="margin-top:8px">
-        <div>
-          <label>Texto invisible</label>
-          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">El texto aparece transparente; se revela al seleccionarlo</div>
-        </div>
-        <label class="toggle"><input type="checkbox" id="invisible-text-toggle"><span class="slider"></span></label>
       </div>
       <div class="toggle-row" style="margin-top:8px;padding:14px 16px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:14px">
         <div>
@@ -813,12 +784,7 @@ function updateCountdownDisplay() {
   document.getElementById("countdown-text-display").innerHTML = dailyHtml;
 }
 
-function applyTextVisibility() {
-  document.body.classList.toggle("text-invisible", !!(data && data.invisibleText));
-}
-
 function renderPreview() {
-  applyTextVisibility();
   var showCD = data.showCountdown && data.countdownDate && new Date(data.countdownDate).getTime() > Date.now();
   if (showCD) {
     document.getElementById("countdown-display").classList.remove("hidden");
@@ -868,7 +834,6 @@ function showApp() {
     document.getElementById("user-code-input").value = data.userCode || "";
     document.getElementById("page-disabled-toggle").checked = !!data.pageDisabled;
     document.getElementById("extra-btn-toggle").checked = data.showExtraBtn !== false;
-    document.getElementById("invisible-text-toggle").checked = !!data.invisibleText;
     // Countdown settings
     var toggle = document.getElementById("countdown-toggle");
     toggle.checked = !!data.showCountdown;
@@ -1103,8 +1068,6 @@ function saveSettings() {
   data.userCode = newCode;
   data.showExtraBtn = document.getElementById("extra-btn-toggle").checked;
   data.pageDisabled = document.getElementById("page-disabled-toggle").checked;
-  data.invisibleText = document.getElementById("invisible-text-toggle").checked;
-  applyTextVisibility();
   saveData(data).then(function(r) {
     if (r.content) {
       statusEl.className = "status ok";
